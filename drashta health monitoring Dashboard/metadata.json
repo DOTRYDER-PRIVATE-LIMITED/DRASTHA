@@ -1,0 +1,8 @@
+{
+  "name": "DRASHTA HEALTH MONITORING",
+  "description": "High-fidelity local industrial worker safety dashboard polling ESP32-S3 over private WiFi Access Point",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
