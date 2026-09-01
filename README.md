@@ -256,6 +256,7 @@ Acquired locally:
 - GPS Longitude
 
 The gateway combines these measurements into a unified telemetry packet.
+<img width="1774" height="887" alt="data packets" src="https://github.com/user-attachments/assets/f8c28194-980c-41af-b596-e41dc5f26c13" />
 
 ```text
                     WORKER SAFETY WRISTBAND
@@ -281,4 +282,3 @@ The gateway combines these measurements into a unified telemetry packet.
                               v
                        DRASHTA BACKEND
 
-<img width="1774" height="887" alt="data packets" src="https://github.com/user-attachments/assets/f8c28194-980c-41af-b596-e41dc5f26c13" />
