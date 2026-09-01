@@ -258,27 +258,167 @@ Acquired locally:
 The gateway combines these measurements into a unified telemetry packet.
 <img width="1774" height="887" alt="data packets" src="https://github.com/user-attachments/assets/f8c28194-980c-41af-b596-e41dc5f26c13" />
 
-```text
-                    WORKER SAFETY WRISTBAND
-                              |
-                         ESP-NOW
-                              |
-                              v
-                    SAFETY SENSOR BOX
-                              |
-          +-------------------+-------------------+
-          |                   |                   |
-          v                   v                   v
-   Wristband Data       Local Sensor Data      GPS Data
-          |                   |                   |
-          +-------------------+-------------------+
-                              |
-                              v
-                    UNIFIED TELEMETRY PACKET
-                              |
-                              v
-                       WI-FI / HTTP
-                              |
-                              v
-                       DRASHTA BACKEND
 
+
+## 2. Network Communication Architecture
+
+<img width="1693" height="929" alt="network comm" src="https://github.com/user-attachments/assets/83c6bef0-fe9e-4cdb-b3a5-387fc420a505" />
+
+
+The DRASHTA system uses a multi-layer wireless communication architecture to connect the Worker Safety Wristband, Safety Sensor Box, local monitoring devices, and the DRASHTA backend.
+
+### 2.1 ESP-NOW Communication
+
+The Worker Safety Wristband communicates with the Safety Sensor Box using **ESP-NOW**, a low-latency, connectionless peer-to-peer wireless communication protocol operating over the 2.4 GHz radio.
+
+- **Wristband:** ESP-NOW slave/satellite node
+- **Safety Sensor Box:** ESP-NOW master/gateway node
+- **Communication:** Peer-to-peer wireless
+- **Frequency:** 2.4 GHz
+- **Router dependency:** Not required for wristband-to-gateway communication
+- **Purpose:** Transmission of wristband telemetry to the Safety Sensor Box
+- **Data:** Heart rate, SpO₂, body temperature, timestamp, and device-related information
+- **Packet handling:** Reception, validation, parsing, and integration are performed by the gateway
+
+The ESP-NOW link operates independently of the Internet and does not require the wristband to establish a conventional Wi-Fi connection.
+
+### 2.2 Safety Sensor Box as Communication Gateway
+
+The Safety Sensor Box acts as the central communication gateway between the wearable sensing node and the external DRASHTA software infrastructure.
+
+The gateway receives the wristband telemetry through ESP-NOW and combines it with the locally acquired sensor data before generating the unified telemetry payload.
+
+The gateway therefore provides the communication bridge between:
+
+- ESP-NOW wearable communication
+- Local Wi-Fi communication
+- Backend HTTP/HTTPS communication
+
+### 2.3 Wi-Fi Soft Access Point (SoftAP)
+
+The Safety Sensor Box can operate as a **Wi-Fi Soft Access Point (SoftAP)**. In this mode, the ESP32/ESP32-S3 gateway creates and broadcasts its own local Wi-Fi network.
+
+The SoftAP provides a local wireless communication interface for monitoring, configuration, diagnostics, and gateway access without requiring an external Wi-Fi router or Internet connection.
+
+Key characteristics include:
+
+- Gateway operates as the Wi-Fi Access Point
+- Local SSID is broadcast by the Safety Sensor Box
+- Connected devices operate as Wi-Fi stations/clients
+- DHCP can provide local IP addresses to connected clients
+- Gateway exposes its local communication endpoints to connected clients
+- Suitable for local monitoring, configuration, testing, and debugging
+- Internet connectivity is not required for local SoftAP communication
+
+The SoftAP functionality is separate from the ESP-NOW communication channel. ESP-NOW is used for wristband-to-gateway telemetry transfer, while SoftAP provides conventional Wi-Fi connectivity for local client devices.
+
+### 2.4 Wi-Fi Station Mode and Backend Uplink
+
+For external backend communication, the Safety Sensor Box operates its Wi-Fi interface in **Station (STA) mode** and connects to an available Wi-Fi network.
+
+The gateway then transmits the unified telemetry payload to the DRASHTA backend using HTTP/HTTPS.
+
+The backend telemetry interface is:
+
+```text
+POST /api/telemetry
+```
+
+## 3. DRASHTA Monitoring Dashboard
+
+The DRASHTA Monitoring Dashboard is a real-time web application built with **React, TypeScript, Vite, Tailwind CSS, and Recharts**. It provides the operator interface for monitoring worker health, environmental conditions, hardware connectivity, safety alerts, and historical telemetry.
+
+<img width="1536" height="1024" alt="dash" src="https://github.com/user-attachments/assets/08fd81d9-82c1-4015-83e3-5a7d0dce6549" />
+
+### 3.1 Dashboard Communication
+
+The dashboard communicates with the DRASHTA backend through REST APIs rather than communicating directly with the PostgreSQL/Supabase database.
+
+The primary communication path is:
+
+**Safety Sensor Box → Backend API → Dashboard**
+
+The dashboard periodically requests the latest processed telemetry and system status from the backend. The backend remains responsible for hardware communication, telemetry parsing, safety-rule processing, and database operations.
+
+Primary dashboard APIs include:
+
+- `GET /api/latest` — Latest normalized telemetry
+- `GET /api/history` — Historical telemetry records
+- `GET /api/hardware-status` — Safety Sensor Box connectivity/heartbeat
+- `GET /api/db-status` — PostgreSQL/Supabase database status
+- `GET /api/alerts` — Safety alert information
+- `POST /api/clear-history` — Reset active local/session history where supported
+
+The dashboard does not require direct database credentials because all database access is isolated within the backend layer.
+
+### 3.2 Real-Time Monitoring
+
+The dashboard maintains a high-frequency telemetry polling mechanism for near-real-time visualization.
+
+The frontend maintains an in-memory telemetry history buffer to support:
+
+- Real-time metric cards
+- Dynamic SVG sparklines
+- Historical charts
+- Sensor history tables
+- Safety-state visualization
+
+The frontend also monitors hardware heartbeat information and reflects the current Safety Sensor Box state through the dashboard status indicators.
+
+### 3.3 Dashboard Features
+
+The interface provides:
+
+- **Worker Safety Monitoring** — Heart rate, SpO₂, body temperature, and related worker telemetry
+- **Environmental Monitoring** — Temperature, pressure, altitude, gas/AQI, ambient oxygen, and related measurements
+- **Motion & Proximity Monitoring** — Accelerometer/movement and obstacle-distance information
+- **Safety Status** — NORMAL, WARNING, and CRITICAL system states
+- **Real-Time Alerts** — Timestamped safety events and hazard notifications
+- **Historical Analytics** — Recharts-based telemetry trend visualization
+- **Telemetry Audit Table** — Chronological sensor records
+- **CSV Export** — Exportable telemetry dataset for analysis and reporting
+- **Hardware Status** — Safety Sensor Box and wristband connectivity monitoring
+- **Database Status** — Live PostgreSQL/Supabase availability indication
+- **Simulation Mode** — Controlled safety scenarios for testing alert and visualization workflows
+
+### 3.4 Database Integration
+
+The dashboard does not directly write telemetry into PostgreSQL. Telemetry is first received and processed by the backend, after which the backend persists the normalized records into **PostgreSQL through Supabase**.
+
+The database layer stores the persistent system information required for:
+
+- Telemetry history
+- Safety alerts
+- Worker/device information
+- Historical analysis
+- System records
+
+
+## 4 Hardware Firmware, Sensor Calibration & Dashboard Setup
+
+### 4.1. Hardware Firmware Location
+
+All production firmware is maintained separately from the dashboard application:
+
+```text
+DRASHTA/
+│
+├── Gateway firmware/
+│   ├── NTPC_WRISTBAND_AP_MODE.ino
+│   └── ntpc_sensor_box.ino
+│
+├── Sensor Test Utilities/
+│   ├── BMP_cal/
+│   │   └── BMP_cal.ino
+│   ├── VL53L1X_Distance_cal/
+│   │   └── VL53L1X_Distance_cal.ino
+│   ├── imu_cal/
+│   │   └── imu_cal.ino
+│   ├── imu_memory_addr_scan/
+│   │   └── imu_memory_addr_scan.ino
+│   └── spo2_cal/
+│       └── spo2_cal.ino
+│
+└── drashta health monitoring Dashboard/
+    └── Dashboard application
+```
